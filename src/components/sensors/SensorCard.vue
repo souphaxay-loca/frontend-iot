@@ -1,54 +1,53 @@
-<!-- src/components/sensors/SensorCard.vue -->
-<template>
-    <div class="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-all">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="text-lg font-semibold">{{ title }}</h3>
-        <span 
-          class="w-3 h-3 rounded-full"
-          :class="statusColor"
-        ></span>
-      </div>
-      
-      <div class="flex items-baseline space-x-2">
-        <span class="text-3xl font-bold">{{ formattedValue }}</span>
-        <span class="text-gray-500">{{ unit }}</span>
-      </div>
-      
-      <div class="mt-4 text-sm text-gray-500">
-        Last updated: {{ formatTime(lastUpdate) }}
-      </div>
-    </div>
-  </template>
-  
-  <script setup>
-  import { computed } from 'vue'
-  import { formatDistanceToNow } from 'date-fns'
-  
-  const props = defineProps({
-    title: String,
-    value: Number,
-    unit: String,
-    status: String,
-    lastUpdate: {
-      type: Date,
-      default: () => new Date()
-    }
-  })
-  
-  const statusColor = computed(() => {
-    const colors = {
-      normal: 'bg-green-500',
-      warning: 'bg-yellow-500',
-      error: 'bg-red-500'
-    }
-    return colors[props.status] || colors.normal
-  })
-  
-  const formattedValue = computed(() => {
-    return props.value?.toFixed(1) || '0'
-  })
-  
-  const formatTime = (date) => {
-    return formatDistanceToNow(date, { addSuffix: true })
+// SensorCards container component
+<script setup>
+import { computed } from 'vue';
+import { useSensorData } from '../../composables/useSensorData';
+import SensorCard from '../../components/sensors/SensorCard.vue';
+
+const { realTimeData, isConnected } = useSensorData();
+
+// Helper function to determine sensor status based on value
+function getSensorStatus(type, value) {
+  if (type === 'temperature') {
+    return value > 28 ? 'warning' : 'normal';
   }
-  </script>
+  if (type === 'humidity') {
+    return value > 70 ? 'warning' : 'normal';
+  }
+  if (type === 'mq3') {
+    return value > 0.4 ? 'warning' : 'normal';
+  }
+  return 'normal';
+}
+
+// If connection is lost, override status to error
+const getStatus = (type, value) => {
+  return isConnected.value ? getSensorStatus(type, value) : 'error';
+};
+</script>
+
+<template>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <SensorCard
+      title="Temperature"
+      :value="realTimeData.temperature"
+      unit="°C"
+      :status="getStatus('temperature', realTimeData.temperature)"
+      :lastUpdate="realTimeData.timestamp"
+    />
+    <SensorCard
+      title="Humidity"
+      :value="realTimeData.humidity"
+      unit="%"
+      :status="getStatus('humidity', realTimeData.humidity)"
+      :lastUpdate="realTimeData.timestamp"
+    />
+    <SensorCard
+      title="Alcohol Level"
+      :value="realTimeData.mq3"
+      unit="ppm"
+      :status="getStatus('mq3', realTimeData.mq3)"
+      :lastUpdate="realTimeData.timestamp"
+    />
+  </div>
+</template>
